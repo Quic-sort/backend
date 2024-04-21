@@ -79,13 +79,63 @@ app.get("/discover", (req, res) => {
   }
 });
 
+app.post("/apply-analytics/:id",(req,res)=>{
+  
+  try{
+    let sqlQuery = `SELECT * FROM job_database WHERE job_id=${req.params.id}`;
+    console.log(sqlQuery)
+    connection.query(sqlQuery,(err,data)=>{
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Error retrieving data from the database");
+      }
+      
+      if (!data) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+  
+      const currentValue = parseInt(data[0].click_counter);
+      
+      const updatedValue = currentValue + 1;
+  
+      // Update the database with the incremented value
+      updateValueInDatabase(req.params.id, updatedValue)
+        .then(() => {
+          res.status(200).json({ message: 'Value updated successfully' });
+        })
+        .catch((updateErr) => {
+          console.error('Error updating value:', updateErr);
+          res.status(500).json({ error: 'Error updating value' });
+      });
 
+      res.status(200);
+    });
+  }catch(err){
+    console.log(err);
+    res.status(500).send("Internal server error");
+  }
+})
 
+function updateValueInDatabase(id, updatedValue) {
+  return new Promise((resolve, reject) => {
+    // Construct the SQL query to update the value
+    const sql = 'UPDATE job_database SET click_counter = ? WHERE job_id = ?';
 
-// Close the database connection when the application exits
-process.on("exit", () => {
-  connection.end();
-});
+    // Execute the SQL query
+    connection.query(sql, [updatedValue, id], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// // Close the database connection when the application exits
+// process.on("exit", () => {
+//   connection.end();
+// });
 
 app.listen(5000, () => {
   console.log("Server is running ");
